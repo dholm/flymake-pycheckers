@@ -36,11 +36,15 @@ unknown.
 
 # Checkers to run be default, when no --checkers options are supplied.
 # One or more of pydo, pep8 or pyflakes, separated by commas
-default_checkers = 'pep8, pyflakes'
+default_checkers = 'pep8, pyflakes, epylint'
 
 # A list of error codes to ignore.
 # default_ignore_codes = ['E225', 'W114']
 default_ignore_codes = []
+# E501 = line to long
+default_ignore_codes= ['E501']
+
+
 
 ## End of customization ##
 
@@ -137,6 +141,33 @@ class PyflakesRunner(LintRunner):
 
         return data
 
+class PylintRunner(LintRunner):
+    """Run epylint, producing flymake readable output.
+
+    The raw output looks like:
+src/subscription_manager/managercli.py:465: Warning (W): TODO remove the username/password
+src/subscription_manager/managercli.py:791: Warning (W): TODO:  Something about these magic numbers!
+src/subscription_manager/managercli.py:24: Warning (W): Relative import 'constants', should be 'subscription_manager.constants'
+"""
+
+    command = 'epylint'
+
+    output_matcher = re.compile(
+        r'(?P<filename>[^:]+):'
+        r'(?P<line_number>[^:]+):'
+        r'.*\s+\((?P<level>.+),.*\):'
+        r'(?P<description>.+)$')
+
+    @classmethod
+    def fixup_data(cls, line, data):
+        if data['level'] == "W":
+            data['level'] = 'WARNING'
+        if data['level'] == 'E':
+            data['level'] =  'ERROR'
+        data['error_type'] = 'PY'
+        data['error_number'] = 'L'
+
+        return data
 
 class Pep8Runner(LintRunner):
     """Run pep8.py, producing flymake readable output.
@@ -207,6 +238,7 @@ RUNNERS = {
     'pyflakes': PyflakesRunner,
     'pep8': Pep8Runner,
     'pydo': PydoRunner,
+    'epylint': PylintRunner,
     }
 
 
