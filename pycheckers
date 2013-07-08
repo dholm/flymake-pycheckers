@@ -37,15 +37,13 @@ unknown.
 
 # Checkers to run be default, when no --checkers options are supplied.
 # One or more of pydo, pep8 or pyflakes, separated by commas
-#default_checkers = 'pep8, pyflakes, epylint'
-default_checkers = 'pep8, pyflakes,pylint'
-#default_checkers = 'pylint'
+default_checkers = 'pep8, pyflakes, pylint'
 
 # A list of error codes to ignore.
 # default_ignore_codes = ['E225', 'W114']
 default_ignore_codes = []
 # E501 = line to long
-default_ignore_codes= ['E501']
+default_ignore_codes.append('E501')
 
 
 
