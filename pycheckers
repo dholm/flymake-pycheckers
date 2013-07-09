@@ -6,21 +6,6 @@
  - Extended with pydo (http://www.lunaryorn.de/code/pydo.html)
  - pylint & pychecker removed
 
-Drop something like this in your .emacs:
-
-(when (load "flymake" t)
-  (defun flymake-pycheckers-init ()
-    (let* ((temp-file (flymake-init-create-temp-buffer-copy
-                       'flymake-create-temp-inplace))
-           (local-file (file-relative-name
-                        temp-file
-                        (file-name-directory buffer-file-name))))
-      (list "/path/to/this/file" (list local-file))))
-
-
-You may also need to set up your path up in the __main__ function at the
-bottom of the file and change the #! line above to an appropriate interpreter.
-
 ==============================================================================
 
 This code is made available by Jason Kirtland <jek@discorporate.us> under the
@@ -37,15 +22,11 @@ unknown.
 
 # Checkers to run be default, when no --checkers options are supplied.
 # One or more of pydo, pep8 or pyflakes, separated by commas
-default_checkers = 'pep8, pyflakes, pylint'
-
+DEFAULT_CHECKERS = 'pep8, pyflakes, pylint'
 # A list of error codes to ignore.
-# default_ignore_codes = ['E225', 'W114']
-default_ignore_codes = []
+DEFAULT_IGNORE_CODES = []
 # E501 = line to long
-default_ignore_codes.append('E501')
-
-
+#DEFAULT_IGNORE_CODES.append('E501')
 
 ## End of customization ##
 
@@ -84,9 +65,9 @@ class LintRunner(object):
         return data
 
     def process_output(self, line):
-        m = self.output_matcher.match(line)
-        if m:
-            return m.groupdict()
+        match = self.output_matcher.match(line)
+        if match:
+            return match.groupdict()
 
     def run(self, filename):
         args = [self.command]
@@ -141,6 +122,7 @@ class PyflakesRunner(LintRunner):
 
         return data
 
+
 class EpylintRunner(LintRunner):
     """Run epylint, producing flymake readable output.
 
@@ -155,7 +137,8 @@ src/subscription_manager/managercli.py:24: Warning (W): Relative import 'constan
     output_matcher = re.compile(
         r'(?P<filename>[^:]+):'
         r'(?P<line_number>[^:]+):'
-        r'\s+(?P<level>.*)\s+\((?P<error_type>.+)(?P<error_number>\d\d\d\d).*\):'
+        r'\s+(?P<level>.*)\s+\((?P<error_type>.+)'
+        r'(?P<error_number>\d\d\d\d).*\):'
         r'(?P<description>.+)$')
 
     @classmethod
@@ -163,7 +146,7 @@ src/subscription_manager/managercli.py:24: Warning (W): Relative import 'constan
         if data['level'] == "Warning":
             data['level'] = 'WARNING'
         if data['level'] == 'Error':
-            data['level'] =  'ERROR'
+            data['level'] = 'ERROR'
 
         return data
 
@@ -185,13 +168,14 @@ src/subscription_manager/managercli.py:861: [C0324, CLI.__init__] Comma not foll
     output_matcher = re.compile(
         r'(?P<filename>[^:]+):'
         r'(?P<line_number>[^:]+):'
-        r'\s+\[(?P<error_type>.+)(?P<error_number>\d\d\d\d).*?\]'
+        r'\s+\[(?P<error_type>.+)'
+        r'(?P<error_number>\d\d\d\d).*?\]'
         r'(?P<description>.*)')
 
     @classmethod
     def fixup_data(cls, line, data):
         # Refactor, Convention, Warning
-        if data['error_type'] in ['R','C','W']:
+        if data['error_type'] in ['R', 'C', 'W']:
             data['level'] = "WARNING"
         # Error, Fatal
         if data['error_type'] in ['E', 'F']:
@@ -201,7 +185,7 @@ src/subscription_manager/managercli.py:861: [C0324, CLI.__init__] Comma not foll
 
     @property
     def run_flags(self):
-        return '--output-format=parseable','--include-ids=y','--reports=n'
+        return '--output-format=parseable', '--include-ids=y', '--reports=n'
 
 
 class Pep8Runner(LintRunner):
@@ -264,8 +248,8 @@ class PydoRunner(LintRunner):
 
 
 def croak(*msgs):
-    for m in msgs:
-        print >> sys.stderr, m.strip()
+    for msg in msgs:
+        print >> sys.stderr, msg.strip()
     sys.exit(1)
 
 
@@ -274,19 +258,13 @@ RUNNERS = {
     'pep8': Pep8Runner,
     'pydo': PydoRunner,
     'epylint': EpylintRunner,
-    'pylint':PylintRunner,
-    }
+    'pylint': PylintRunner}
 
 
-if __name__ == '__main__':
-    # transparently add a virtualenv to the path when launched with a venv'd
-    # python.
-    os.environ['PATH'] = \
-      path.dirname(sys.executable) + ':' + os.environ['PATH']
-
-    if len(sys.argv) < 2:
-        croak("Usage: %s [file]" % sys.argv[0])
-    elif len(sys.argv) > 2:
+def main(argv):
+    if len(argv) < 2:
+        croak("Usage: %s [file]" % argv[0])
+    elif len(argv) > 2:
         from optparse import OptionParser
         parser = OptionParser()
         parser.add_option("-i", "--ignore_codes", dest="ignore_codes",
@@ -297,28 +275,35 @@ if __name__ == '__main__':
                           help="comma separated list of checkers")
         options, args = parser.parse_args()
         if not args:
-            croak("Usage: %s [file]" % sys.argv[0])
+            croak("Usage: %s [file]" % argv[0])
         if options.checkers:
             checkers = options.checkers
         else:
-            checkers = default_checkers
+            checkers = DEFAULT_CHECKERS
         if options.ignore_codes:
             ignore_codes = options.ignore_codes
         else:
-            ignore_codes = default_ignore_codes
+            ignore_codes = DEFAULT_IGNORE_CODES
         source_file = args[0]
     else:
-        source_file = sys.argv[1]
-        checkers = default_checkers
-        ignore_codes = default_ignore_codes
+        source_file = argv[1]
+        checkers = DEFAULT_CHECKERS
+        ignore_codes = DEFAULT_IGNORE_CODES
 
     for checker in checkers.split(','):
         try:
-            cls = RUNNERS[checker.strip()]
+            checker_cls = RUNNERS[checker.strip()]
         except KeyError:
             croak(("Unknown checker %s" % checker),
                   ("Expected one of %s" % ', '.join(RUNNERS.keys())))
-        runner = cls(ignore_codes=ignore_codes)
+        runner = checker_cls(ignore_codes=ignore_codes)
         runner.run(source_file)
 
-    sys.exit(0)
+    return 0
+
+if __name__ == '__main__':
+    # transparently add a virtualenv to the path when launched with a venv'd
+    # python.
+    os.environ['PATH'] = (path.dirname(sys.executable) + ':' +
+                          os.environ['PATH'])
+    main(sys.argv)
