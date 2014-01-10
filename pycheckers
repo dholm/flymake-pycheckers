@@ -65,6 +65,7 @@ class LintRunner(object):
         return data
 
     def process_output(self, line):
+        line = line.rstrip('\n').rstrip('\r')
         match = self.output_matcher.match(line)
         if match:
             return match.groupdict()
