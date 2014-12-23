@@ -16,7 +16,7 @@ Original work taken from http://www.emacswiki.org/emacs/PythonMode, author
 unknown.
 
 """
-
+from __future__ import print_function
 
 ## Customization ##
 
@@ -65,7 +65,7 @@ class LintRunner(object):
         return data
 
     def process_output(self, line):
-        line = line.rstrip('\n').rstrip('\r')
+        line = line.rstrip(b'\n').rstrip(b'\r').decode()
         match = self.output_matcher.match(line)
         if match:
             return match.groupdict()
@@ -81,14 +81,14 @@ class LintRunner(object):
             if match:
                 tokens = dict(self.output_template)
                 tokens.update(self.fixup_data(line, match))
-                print self.output_format % tokens
+                print(self.output_format % tokens)
 
         for line in process.stderr:
             match = self.process_output(line)
             if match:
                 tokens = dict(self.output_template)
                 tokens.update(self.fixup_data(line, match))
-                print self.output_format % tokens
+                print(self.output_format % tokens)
 
 
 class PyflakesRunner(LintRunner):
@@ -250,7 +250,7 @@ class PydoRunner(LintRunner):
 
 def croak(*msgs):
     for msg in msgs:
-        print >> sys.stderr, msg.strip()
+        print(msg.strip(), file=sys.stderr)
     sys.exit(1)
 
 
